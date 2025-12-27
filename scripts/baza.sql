@@ -260,7 +260,7 @@ INSERT INTO klijent (id, naziv_firme, tip_klijenta, adresa, mjesto, postanskiBro
 INSERT INTO kamion (id, registarska_tablica, marka, model, godina_proizvodnje, kapacitet_tone, vrsta_voza, stanje_kilometra, datum_registracije, datum_zakljucnog_pregleda, zaduzeni_vozac_id, ime_vozaca, prezime_vozaca, aktivan, datum_kreiranja) VALUES
 (1, 'BJ-001-AB', 'Volvo', 'FH16', 2022, 25.0, 'Tegljač', 45000, '2024-03-10', '2025-03-10', NULL, 'Marko', 'Marković', TRUE, NOW()),
 (2, 'BJ-002-AB', 'Mercedes', 'Actros', 2021, 20.0, 'Tegljač', 62000, '2024-06-15', '2025-06-15', NULL, 'Ivan', 'Horvat', TRUE, NOW()),
-(3, 'BJ-003-AB', 'Scania', 'R440', 2023, 24.0, 'Tegljač', 28000, '2024-01-20', '2025-01-20', NULL, 'Petar', 'Petrović', TRUE, NOW()),
+(3, npm run dev'BJ-003-AB', 'Scania', 'R440', 2023, 24.0, 'Tegljač', 28000, '2024-01-20', '2025-01-20', NULL, 'Petar', 'Petrović', TRUE, NOW()),
 (4, 'BJ-004-AB', 'DAF', 'XF95', 2020, 18.0, 'Cisterna', 78000, '2024-11-05', '2025-11-05', NULL, 'Jovan', 'Jovanović', TRUE, NOW()),
 (5, 'E89-M-111', 'MAN', 'TGX', 2024, 26.0, 'Tegljač', 5000, '2024-01-01', '2025-01-01', NULL, 'Haris', 'Delić', TRUE, NOW()),
 (6, 'A12-K-222', 'Iveco', 'Stralis', 2022, 19.0, 'Hladnjača', 35000, '2024-05-10', '2025-05-10', NULL, 'Senad', 'Musić', TRUE, NOW()),
