@@ -48,6 +48,13 @@ export async function GET(request: NextRequest) {
     const [gorivo] = await pool.execute<GorivoRow[]>(sql, params)
     return NextResponse.json({ success: true, data: gorivo })
   } catch (error) {
+    if (error && (error as { code?: string }).code === "ER_NO_SUCH_TABLE") {
+      return NextResponse.json({
+        success: true,
+        data: [],
+        message: "Tabela gorivo nije pronađena. Pokrenite migracije baze.",
+      })
+    }
     console.error("Greška pri dohvaćanju goriva:", error)
     return NextResponse.json({ success: false, message: "Greška servera" }, { status: 500 })
   }

@@ -72,7 +72,7 @@ export default function TurePage() {
   const [currentTura, setCurrentTura] = useState<Tura | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState("sve")
-  const [userRole, setUserRole] = useState<"admin" | "vozac">("admin")
+  const [userRole, setUserRole] = useState<"admin" | "vozac" | null>(null)
 
   const [formData, setFormData] = useState({
     broj_ture: "",

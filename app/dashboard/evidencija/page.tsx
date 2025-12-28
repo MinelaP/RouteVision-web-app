@@ -65,7 +65,7 @@ export default function EvidencijaPage() {
   const [currentGorivo, setCurrentGorivo] = useState<Gorivo | null>(null)
   const [deleteInfo, setDeleteInfo] = useState<{ type: string; id: number } | null>(null)
   const [activeTab, setActiveTab] = useState("servisi")
-  const [userRole, setUserRole] = useState<"admin" | "vozac">("admin")
+  const [userRole, setUserRole] = useState<"admin" | "vozac" | null>(null)
 
   const [servisFormData, setServisFormData] = useState({
     kamion_id: "",
