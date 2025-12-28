@@ -195,6 +195,19 @@ CREATE TABLE servisni_dnevnik (
     FOREIGN KEY (kamion_id) REFERENCES kamion(id) ON DELETE CASCADE,
     FOREIGN KEY (vozac_id) REFERENCES vozac(id) ON DELETE SET NULL
 );
+
+-- Gorivo (Fuel) Table
+CREATE TABLE gorivo (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    kamion_id INT NOT NULL,
+    datum DATE,
+    litara DECIMAL(10,2),
+    cijena_po_litri DECIMAL(10,2),
+    ukupno DECIMAL(10,2),
+    aktivan BOOLEAN DEFAULT TRUE,
+    datum_kreiranja TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (kamion_id) REFERENCES kamion(id) ON DELETE CASCADE
+);
 -- Dokumenti (Dokumenti)
 DROP TABLE IF EXISTS dokument;
 CREATE TABLE dokument (

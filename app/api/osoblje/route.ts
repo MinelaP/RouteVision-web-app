@@ -26,7 +26,6 @@ interface VozacRow extends RowDataPacket {
   datum_zaposlenja: Date | null
   plata: number | null
   broj_dovrsenih_tura: number
-  stanje_racuna: number
   aktivan: boolean
   datum_kreiranja: Date
 }
@@ -59,7 +58,7 @@ export async function GET(request: NextRequest) {
     } else if (tip === "vozac") {
       const [vozaci] = await pool.execute<VozacRow[]>(
         `SELECT id, ime, prezime, email, broj_telefona, broj_vozacke_dozvole, kategorija_dozvole,
-         datum_zaposlenja, plata, broj_dovrsenih_tura, stanje_racuna, aktivan, datum_kreiranja 
+         datum_zaposlenja, plata, broj_dovrsenih_tura, aktivan, datum_kreiranja 
          FROM vozac ORDER BY datum_kreiranja DESC`,
       )
       return NextResponse.json({ success: true, data: vozaci })
