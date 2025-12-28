@@ -67,7 +67,7 @@ export default function FakturePage() {
       const response = await fetch("/api/auth/session")
       if (response.ok) {
         const data = await response.json()
-        if (data.user.rola !== "admin") {
+        if (data.user.role !== "admin") {
           router.push("/dashboard")
         }
       } else {

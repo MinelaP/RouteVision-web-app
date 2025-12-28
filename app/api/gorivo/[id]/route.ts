@@ -1,31 +1,43 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { query } from "@/lib/db"
+import pool from "@/lib/db"
 import { getSessionUser } from "@/lib/auth"
+import type { ResultSetHeader } from "mysql2"
 
 // PUT - Ažuriraj gorivo
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await getSessionUser(request)
     if (!user) {
-      return NextResponse.json({ error: "Neautorizovano" }, { status: 401 })
+      return NextResponse.json({ success: false, message: "Neautorizovano" }, { status: 401 })
+    }
+
+    if (user.role !== "admin") {
+      return NextResponse.json({ success: false, message: "Nemate dozvolu" }, { status: 403 })
     }
 
     const data = await request.json()
     const { datum, litara, cijena_po_litri, ukupno } = data
+    const parsedLitara = Number.parseFloat(litara)
+    const parsedCijena = Number.parseFloat(cijena_po_litri)
+    const parsedUkupno = Number.parseFloat(ukupno)
 
-    const result = await query(
-      `UPDATE gorivo SET datum = ?, litara = ?, cijena_po_litri = ?, ukupno = ? WHERE gorivo_id = ?`,
-      [datum, Number.parseFloat(litara), Number.parseFloat(cijena_po_litri), Number.parseFloat(ukupno), params.id],
+    if (Number.isNaN(parsedLitara) || Number.isNaN(parsedCijena) || Number.isNaN(parsedUkupno)) {
+      return NextResponse.json({ success: false, message: "Unesite validne brojčane vrijednosti" }, { status: 400 })
+    }
+
+    const [result] = await pool.execute<ResultSetHeader>(
+      `UPDATE gorivo SET datum = ?, litara = ?, cijena_po_litri = ?, ukupno = ? WHERE id = ?`,
+      [datum, parsedLitara, parsedCijena, parsedUkupno, params.id],
     )
 
     if (result.affectedRows === 0) {
-      return NextResponse.json({ error: "Gorivo nije pronađeno" }, { status: 404 })
+      return NextResponse.json({ success: false, message: "Gorivo nije pronađeno" }, { status: 404 })
     }
 
-    return NextResponse.json({ message: "Gorivo uspješno ažurirano" })
+    return NextResponse.json({ success: true, message: "Gorivo uspješno ažurirano" })
   } catch (error) {
     console.error("Greška pri ažuriranju goriva:", error)
-    return NextResponse.json({ error: "Greška servera" }, { status: 500 })
+    return NextResponse.json({ success: false, message: "Greška servera" }, { status: 500 })
   }
 }
 
@@ -33,19 +45,19 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await getSessionUser(request)
-    if (!user || user.rola !== "admin") {
-      return NextResponse.json({ error: "Nemate dozvolu" }, { status: 403 })
+    if (!user || user.role !== "admin") {
+      return NextResponse.json({ success: false, message: "Nemate dozvolu" }, { status: 403 })
     }
 
-    const result = await query("DELETE FROM gorivo WHERE gorivo_id = ?", [params.id])
+    const [result] = await pool.execute<ResultSetHeader>("UPDATE gorivo SET aktivan = FALSE WHERE id = ?", [params.id])
 
     if (result.affectedRows === 0) {
-      return NextResponse.json({ error: "Gorivo nije pronađeno" }, { status: 404 })
+      return NextResponse.json({ success: false, message: "Gorivo nije pronađeno" }, { status: 404 })
     }
 
-    return NextResponse.json({ message: "Gorivo uspješno obrisano" })
+    return NextResponse.json({ success: true, message: "Gorivo uspješno obrisano" })
   } catch (error) {
     console.error("Greška pri brisanju goriva:", error)
-    return NextResponse.json({ error: "Greška servera" }, { status: 500 })
+    return NextResponse.json({ success: false, message: "Greška servera" }, { status: 500 })
   }
 }

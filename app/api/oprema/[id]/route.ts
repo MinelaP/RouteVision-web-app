@@ -66,13 +66,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const body = await request.json()
     const { naziv, vrsta, kamion_id, kapacitet, stanje, datum_nabavke, datum_zadnje_provjere, napomena } = body
 
+    const normalizedKamionId = kamion_id && Number(kamion_id) !== 0 ? Number(kamion_id) : null
+
     await pool.execute<ResultSetHeader>(
       `UPDATE oprema SET naziv = ?, vrsta = ?, kamion_id = ?, kapacitet = ?, stanje = ?, 
        datum_nabavke = ?, datum_zadnje_provjere = ?, napomena = ? WHERE id = ?`,
       [
         naziv,
         vrsta || null,
-        kamion_id || null,
+        normalizedKamionId,
         kapacitet || null,
         stanje || null,
         datum_nabavke || null,

@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await getSessionUser(request)
-    if (!user || user.rola !== "admin") {
+    if (!user || user.role !== "admin") {
       return NextResponse.json({ error: "Nemate dozvolu" }, { status: 403 })
     }
 

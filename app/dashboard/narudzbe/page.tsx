@@ -34,10 +34,10 @@ import { Toaster } from "@/components/ui/toaster"
 
 interface Narudba {
   id: number
-  broj_narudbe: string
+  broj_narudzbe: string
   klijent_id: number
   klijent_naziv: string
-  datum_narudbe: string
+  datum_narudzbe: string
   datum_isporuke: string
   vrsta_robe: string
   kolicina: number
@@ -65,9 +65,9 @@ export default function NarudzbePage() {
   const [editMode, setEditMode] = useState(false)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [formData, setFormData] = useState({
-    broj_narudbe: "",
+    broj_narudzbe: "",
     klijent_id: "",
-    datum_narudbe: "",
+    datum_narudzbe: "",
     datum_isporuke: "",
     vrsta_robe: "",
     kolicina: "",
@@ -109,9 +109,9 @@ export default function NarudzbePage() {
     if (edit && item) {
       setSelectedId(item.id)
       setFormData({
-        broj_narudbe: item.broj_narudbe,
+        broj_narudzbe: item.broj_narudzbe,
         klijent_id: item.klijent_id.toString(),
-        datum_narudbe: item.datum_narudbe || "",
+        datum_narudzbe: item.datum_narudzbe || "",
         datum_isporuke: item.datum_isporuke || "",
         vrsta_robe: item.vrsta_robe || "",
         kolicina: item.kolicina?.toString() || "",
@@ -124,9 +124,9 @@ export default function NarudzbePage() {
     } else {
       setSelectedId(null)
       setFormData({
-        broj_narudbe: "",
+        broj_narudzbe: "",
         klijent_id: "",
-        datum_narudbe: "",
+        datum_narudzbe: "",
         datum_isporuke: "",
         vrsta_robe: "",
         kolicina: "",
@@ -226,7 +226,7 @@ export default function NarudzbePage() {
 
   const filteredNarudzbe = narudzbe.filter(
     (n) =>
-      n.broj_narudbe.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      n.broj_narudzbe.toLowerCase().includes(searchTerm.toLowerCase()) ||
       n.klijent_naziv.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (n.vrsta_robe && n.vrsta_robe.toLowerCase().includes(searchTerm.toLowerCase())),
   )
@@ -299,7 +299,7 @@ export default function NarudzbePage() {
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
                             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                            {narudba.broj_narudbe}
+                            {narudba.broj_narudzbe}
                           </div>
                         </TableCell>
                         <TableCell>{narudba.klijent_naziv}</TableCell>
@@ -308,7 +308,7 @@ export default function NarudzbePage() {
                           {narudba.kolicina ? `${narudba.kolicina} ${narudba.jedinica_mjere || ""}` : "-"}
                         </TableCell>
                         <TableCell>
-                          {narudba.datum_narudbe ? new Date(narudba.datum_narudbe).toLocaleDateString("bs-BA") : "-"}
+                          {narudba.datum_narudzbe ? new Date(narudba.datum_narudzbe).toLocaleDateString("bs-BA") : "-"}
                         </TableCell>
                         <TableCell>
                           {narudba.datum_isporuke ? new Date(narudba.datum_isporuke).toLocaleDateString("bs-BA") : "-"}
@@ -356,11 +356,11 @@ export default function NarudzbePage() {
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="broj_narudbe">Broj narudžbe *</Label>
+                <Label htmlFor="broj_narudzbe">Broj narudžbe *</Label>
                 <Input
-                  id="broj_narudbe"
-                  value={formData.broj_narudbe}
-                  onChange={(e) => setFormData({ ...formData, broj_narudbe: e.target.value })}
+                  id="broj_narudzbe"
+                  value={formData.broj_narudzbe}
+                  onChange={(e) => setFormData({ ...formData, broj_narudzbe: e.target.value })}
                   placeholder="ORD-2024-001"
                   required
                 />
@@ -387,12 +387,12 @@ export default function NarudzbePage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="datum_narudbe">Datum narudžbe</Label>
+                <Label htmlFor="datum_narudzbe">Datum narudžbe</Label>
                 <Input
-                  id="datum_narudbe"
+                  id="datum_narudzbe"
                   type="date"
-                  value={formData.datum_narudbe}
-                  onChange={(e) => setFormData({ ...formData, datum_narudbe: e.target.value })}
+                  value={formData.datum_narudzbe}
+                  onChange={(e) => setFormData({ ...formData, datum_narudzbe: e.target.value })}
                 />
               </div>
               <div className="grid gap-2">

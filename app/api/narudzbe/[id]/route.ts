@@ -5,9 +5,9 @@ import type { RowDataPacket, ResultSetHeader } from "mysql2"
 
 interface NarudbaRow extends RowDataPacket {
   id: number
-  broj_narudbe: string
+  broj_narudzbe: string
   klijent_id: number
-  datum_narudbe: Date
+  datum_narudzbe: Date
   datum_isporuke: Date
   vrsta_robe: string
   kolicina: number
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const [narudzbe] = await pool.execute<NarudbaRow[]>(
       `SELECT n.*, k.naziv_firme as klijent_naziv 
-       FROM narudba n 
+       FROM narudzba n 
        LEFT JOIN klijent k ON n.klijent_id = k.id 
        WHERE n.id = ?`,
       [id],
@@ -68,9 +68,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const body = await request.json()
     const {
-      broj_narudbe,
+      broj_narudzbe,
       klijent_id,
-      datum_narudbe,
+      datum_narudzbe,
       datum_isporuke,
       vrsta_robe,
       kolicina,
@@ -82,13 +82,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     } = body
 
     await pool.execute<ResultSetHeader>(
-      `UPDATE narudba SET broj_narudbe = ?, klijent_id = ?, datum_narudbe = ?, datum_isporuke = ?, 
+      `UPDATE narudzba SET broj_narudzbe = ?, klijent_id = ?, datum_narudzbe = ?, datum_isporuke = ?, 
        vrsta_robe = ?, kolicina = ?, jedinica_mjere = ?, lokacija_preuzimanja = ?, lokacija_dostave = ?, 
        napomena = ?, status = ? WHERE id = ?`,
       [
-        broj_narudbe,
+        broj_narudzbe,
         klijent_id,
-        datum_narudbe || null,
+        datum_narudzbe || null,
         datum_isporuke || null,
         vrsta_robe || null,
         kolicina || null,
@@ -125,7 +125,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return NextResponse.json({ success: false, message: "Nemate dozvolu za ovu akciju" }, { status: 403 })
     }
 
-    await pool.execute<ResultSetHeader>("UPDATE narudba SET aktivan = FALSE WHERE id = ?", [id])
+    await pool.execute<ResultSetHeader>("UPDATE narudzba SET aktivan = FALSE WHERE id = ?", [id])
 
     return NextResponse.json({ success: true, message: "Narudžba uspješno obrisana" })
   } catch (error) {

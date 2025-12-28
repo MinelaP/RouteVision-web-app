@@ -66,6 +66,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { naziv, vrsta, kamion_id, kapacitet, stanje, datum_nabavke, datum_zadnje_provjere, napomena } = body
 
+    const normalizedKamionId = kamion_id && Number(kamion_id) !== 0 ? Number(kamion_id) : null
+
     if (!naziv) {
       return NextResponse.json({ success: false, message: "Naziv je obavezan" }, { status: 400 })
     }
@@ -76,7 +78,7 @@ export async function POST(request: NextRequest) {
       [
         naziv,
         vrsta || null,
-        kamion_id || null,
+        normalizedKamionId,
         kapacitet || null,
         stanje || null,
         datum_nabavke || null,

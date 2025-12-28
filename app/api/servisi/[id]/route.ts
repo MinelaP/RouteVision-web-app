@@ -1,33 +1,41 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { query } from "@/lib/db"
+import pool from "@/lib/db"
 import { getSessionUser } from "@/lib/auth"
+import type { ResultSetHeader } from "mysql2"
 
 // PUT - Ažuriraj servis
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await getSessionUser(request)
     if (!user) {
-      return NextResponse.json({ error: "Neautorizovano" }, { status: 401 })
+      return NextResponse.json({ success: false, message: "Neautorizovano" }, { status: 401 })
+    }
+
+    if (user.role !== "admin") {
+      return NextResponse.json({ success: false, message: "Nemate dozvolu" }, { status: 403 })
     }
 
     const data = await request.json()
-    const { datum, opis, troskovi } = data
+    const { datum_servisa, vrsta_servisa, opis_servisa, troskovi } = data
+    const parsedTroskovi = Number.parseFloat(troskovi)
 
-    const result = await query(`UPDATE servis SET datum = ?, opis = ?, troskovi = ? WHERE servis_id = ?`, [
-      datum,
-      opis,
-      Number.parseFloat(troskovi),
-      params.id,
-    ])
-
-    if (result.affectedRows === 0) {
-      return NextResponse.json({ error: "Servis nije pronađen" }, { status: 404 })
+    if (Number.isNaN(parsedTroskovi)) {
+      return NextResponse.json({ success: false, message: "Troškovi moraju biti broj" }, { status: 400 })
     }
 
-    return NextResponse.json({ message: "Servis uspješno ažuriran" })
+    const [result] = await pool.execute<ResultSetHeader>(
+      `UPDATE servisni_dnevnik SET datum_servisa = ?, vrsta_servisa = ?, opisServisa = ?, troskovi = ? WHERE id = ?`,
+      [datum_servisa, vrsta_servisa || null, opis_servisa || null, parsedTroskovi, params.id],
+    )
+
+    if (result.affectedRows === 0) {
+      return NextResponse.json({ success: false, message: "Servis nije pronađen" }, { status: 404 })
+    }
+
+    return NextResponse.json({ success: true, message: "Servis uspješno ažuriran" })
   } catch (error) {
     console.error("Greška pri ažuriranju servisa:", error)
-    return NextResponse.json({ error: "Greška servera" }, { status: 500 })
+    return NextResponse.json({ success: false, message: "Greška servera" }, { status: 500 })
   }
 }
 
@@ -35,19 +43,21 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await getSessionUser(request)
-    if (!user || user.rola !== "admin") {
-      return NextResponse.json({ error: "Nemate dozvolu" }, { status: 403 })
+    if (!user || user.role !== "admin") {
+      return NextResponse.json({ success: false, message: "Nemate dozvolu" }, { status: 403 })
     }
 
-    const result = await query("DELETE FROM servis WHERE servis_id = ?", [params.id])
+    const [result] = await pool.execute<ResultSetHeader>("UPDATE servisni_dnevnik SET aktivan = FALSE WHERE id = ?", [
+      params.id,
+    ])
 
     if (result.affectedRows === 0) {
-      return NextResponse.json({ error: "Servis nije pronađen" }, { status: 404 })
+      return NextResponse.json({ success: false, message: "Servis nije pronađen" }, { status: 404 })
     }
 
-    return NextResponse.json({ message: "Servis uspješno obrisan" })
+    return NextResponse.json({ success: true, message: "Servis uspješno obrisan" })
   } catch (error) {
     console.error("Greška pri brisanju servisa:", error)
-    return NextResponse.json({ error: "Greška servera" }, { status: 500 })
+    return NextResponse.json({ success: false, message: "Greška servera" }, { status: 500 })
   }
 }

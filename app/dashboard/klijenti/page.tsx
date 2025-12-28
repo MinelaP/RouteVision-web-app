@@ -212,6 +212,42 @@ export default function KlijentiPage() {
     }
   }
 
+  const handleToggleStatus = async (klijent: Klijent) => {
+    try {
+      const response = await fetch(`/api/klijenti/${klijent.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...klijent,
+          aktivan: !klijent.aktivan,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: "Uspjeh",
+          description: "Status klijenta je ažuriran.",
+        })
+        fetchKlijenti()
+      } else {
+        toast({
+          title: "Greška",
+          description: data.message,
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("[v0] Greška pri ažuriranju statusa:", error)
+      toast({
+        title: "Greška",
+        description: "Došlo je do greške na serveru",
+        variant: "destructive",
+      })
+    }
+  }
+
   const filteredKlijenti = klijenti.filter(
     (k) =>
       k.naziv_firme.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -301,9 +337,19 @@ export default function KlijentiPage() {
                         <TableCell>{klijent.broj_telefona || "-"}</TableCell>
                         <TableCell>{klijent.email || "-"}</TableCell>
                         <TableCell>
-                          <Badge variant={klijent.aktivan ? "default" : "secondary"}>
-                            {klijent.aktivan ? "Aktivan" : "Neaktivan"}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={klijent.aktivan ? "default" : "secondary"}>
+                              {klijent.aktivan ? "Aktivan" : "Neaktivan"}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleToggleStatus(klijent)}
+                              className="h-7 px-2"
+                            >
+                              {klijent.aktivan ? "Deaktiviraj" : "Aktiviraj"}
+                            </Button>
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">

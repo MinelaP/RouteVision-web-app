@@ -203,7 +203,7 @@ export default async function DashboardPage() {
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 <a
-                  href="/dashboard/moje-ture"
+                  href="/dashboard/ture"
                   className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent"
                 >
                   <TrendingUp className="h-8 w-8 text-primary" />
