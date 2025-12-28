@@ -38,9 +38,9 @@ export async function GET(request: NextRequest) {
     }
 
     const [kamioni] = await pool.execute<KamionRow[]>(
-      `SELECT k.*, v.ime as vozac_ime, v.prezime as vozac_prezime 
+      `SELECT k.*, k.zaduzeni_vozac_id as vozac_id, v.ime as vozac_ime, v.prezime as vozac_prezime 
        FROM kamion k 
-       LEFT JOIN vozac v ON k.vozac_id = v.id 
+       LEFT JOIN vozac v ON k.zaduzeni_vozac_id = v.id 
        ORDER BY k.datum_kreiranja DESC`,
     )
 
@@ -81,6 +81,8 @@ export async function POST(request: NextRequest) {
       vozac_id,
     } = body
 
+    const normalizedVozacId = vozac_id && Number(vozac_id) !== 0 ? Number(vozac_id) : null
+
     // Validacija
     if (!registarska_tablica || !marka || !model) {
       return NextResponse.json(
@@ -100,7 +102,7 @@ export async function POST(request: NextRequest) {
 
     const [result] = await pool.execute<ResultSetHeader>(
       `INSERT INTO kamion (registarska_tablica, marka, model, godina_proizvodnje, kapacitet_tone, 
-       vrsta_voza, stanje_kilometra, datum_registracije, datum_zakljucnog_pregleda, vozac_id) 
+       vrsta_voza, stanje_kilometra, datum_registracije, datum_zakljucnog_pregleda, zaduzeni_vozac_id) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         registarska_tablica,
@@ -112,7 +114,7 @@ export async function POST(request: NextRequest) {
         stanje_kilometra || 0,
         datum_registracije || null,
         datum_zakljucnog_pregleda || null,
-        vozac_id || null,
+        normalizedVozacId,
       ],
     )
 

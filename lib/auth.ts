@@ -85,7 +85,20 @@ export async function getSessionUser(request: Request): Promise<User | null> {
 
         // Dekodiranje sesije - koristimo decodeURIComponent jer je cookie JSON string
         const sessionData = JSON.parse(decodeURIComponent(sessionCookie))
-        return sessionData as User
+        const userId = sessionData.userId ?? sessionData.id
+
+        if (!userId) {
+            return null
+        }
+
+        return {
+            id: userId,
+            ime: sessionData.ime,
+            prezime: sessionData.prezime,
+            email: sessionData.email,
+            role: sessionData.role,
+            aktivan: true,
+        }
     } catch (error) {
         console.error("[v0] Greška pri dohvaćanju sesije:", error)
         return null

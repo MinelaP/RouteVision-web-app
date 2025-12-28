@@ -8,7 +8,7 @@ import path from "path"
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await getSessionUser(request)
-    if (!user || user.rola !== "admin") {
+    if (!user || user.role !== "admin") {
       return NextResponse.json({ error: "Nemate dozvolu" }, { status: 403 })
     }
 
@@ -19,18 +19,18 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const fajl = formData.get("fajl") as File | null
 
     // Dobavi postojeću fakturu
-    const existingFaktura = await query("SELECT * FROM fakture WHERE faktura_id = ?", [params.id])
+    const existingFaktura = await query("SELECT * FROM fakture WHERE id = ?", [params.id])
     if (existingFaktura.length === 0) {
       return NextResponse.json({ error: "Faktura nije pronađena" }, { status: 404 })
     }
 
-    let putanja_dokumenta = existingFaktura[0].putanja_dokumenta
+    let putanja_dokumenta = existingFaktura[0].datoteka_path
 
     // Ako je priložen novi fajl
     if (fajl) {
       // Obriši stari fajl ako postoji
-      if (existingFaktura[0].putanja_dokumenta) {
-        const oldFilePath = path.join(process.cwd(), "public", existingFaktura[0].putanja_dokumenta)
+      if (existingFaktura[0].datoteka_path) {
+        const oldFilePath = path.join(process.cwd(), "public", existingFaktura[0].datoteka_path)
         try {
           await unlink(oldFilePath)
         } catch (error) {
@@ -55,11 +55,13 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     // Ažuriraj bazu
+    const parsedIznos = Number.parseFloat(iznos)
+
     await query(
       `UPDATE fakture 
-       SET broj_fakture = ?, datum_izdavanja = ?, iznos = ?, putanja_dokumenta = ?
-       WHERE faktura_id = ?`,
-      [broj_fakture, datum_izdavanja, Number.parseFloat(iznos), putanja_dokumenta, params.id],
+       SET broj_fakture = ?, datum_izdavanja = ?, iznos_usluge = ?, ukupan_iznos = ?, datoteka_path = ?
+       WHERE id = ?`,
+      [broj_fakture, datum_izdavanja, parsedIznos, parsedIznos, putanja_dokumenta, params.id],
     )
 
     return NextResponse.json({ message: "Faktura uspješno ažurirana", putanja_dokumenta })
@@ -73,19 +75,19 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await getSessionUser(request)
-    if (!user || user.rola !== "admin") {
+    if (!user || user.role !== "admin") {
       return NextResponse.json({ error: "Nemate dozvolu" }, { status: 403 })
     }
 
     // Dobavi fakturu prije brisanja
-    const faktura = await query("SELECT * FROM fakture WHERE faktura_id = ?", [params.id])
+    const faktura = await query("SELECT * FROM fakture WHERE id = ?", [params.id])
     if (faktura.length === 0) {
       return NextResponse.json({ error: "Faktura nije pronađena" }, { status: 404 })
     }
 
     // Obriši fajl ako postoji
-    if (faktura[0].putanja_dokumenta) {
-      const filePath = path.join(process.cwd(), "public", faktura[0].putanja_dokumenta)
+    if (faktura[0].datoteka_path) {
+      const filePath = path.join(process.cwd(), "public", faktura[0].datoteka_path)
       try {
         await unlink(filePath)
       } catch (error) {
@@ -94,7 +96,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     }
 
     // Obriši iz baze
-    await query("DELETE FROM fakture WHERE faktura_id = ?", [params.id])
+    await query("DELETE FROM fakture WHERE id = ?", [params.id])
 
     return NextResponse.json({ message: "Faktura uspješno obrisana" })
   } catch (error) {

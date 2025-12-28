@@ -24,21 +24,20 @@ import { useRouter } from "next/navigation"
 import { ExportImportMenu } from "@/components/export-import-menu"
 
 interface Servis {
-  servis_id: number
-  kamion_id?: number
-  kamion_registracija?: string
-  kamion_model?: string
-  oprema_id?: number
-  oprema_naziv?: string
-  datum: string
-  opis: string
-  troskovi: number
+  id: number
+  kamion_id: number
+  kamion_tablica: string
+  kamion_model: string
+  datum_servisa: string
+  vrsta_servisa: string | null
+  opis_servisa: string | null
+  troskovi: number | null
 }
 
 interface Gorivo {
-  gorivo_id: number
+  id: number
   kamion_id: number
-  kamion_registracija: string
+  kamion_tablica: string
   kamion_model: string
   datum: string
   litara: number
@@ -47,14 +46,9 @@ interface Gorivo {
 }
 
 interface Kamion {
-  kamion_id: number
-  registracija: string
+  id: number
+  registarska_tablica: string
   model: string
-}
-
-interface Oprema {
-  oprema_id: number
-  naziv: string
 }
 
 export default function EvidencijaPage() {
@@ -62,7 +56,6 @@ export default function EvidencijaPage() {
   const [servisi, setServisi] = useState<Servis[]>([])
   const [gorivo, setGorivo] = useState<Gorivo[]>([])
   const [kamioni, setKamioni] = useState<Kamion[]>([])
-  const [oprema, setOprema] = useState<Oprema[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [isServisDialogOpen, setIsServisDialogOpen] = useState(false)
@@ -72,14 +65,13 @@ export default function EvidencijaPage() {
   const [currentGorivo, setCurrentGorivo] = useState<Gorivo | null>(null)
   const [deleteInfo, setDeleteInfo] = useState<{ type: string; id: number } | null>(null)
   const [activeTab, setActiveTab] = useState("servisi")
-  const [userRole, setUserRole] = useState<"admin" | "vozac">("admin")
+  const [userRole, setUserRole] = useState<"admin" | "vozac" | null>(null)
 
   const [servisFormData, setServisFormData] = useState({
-    tip: "kamion",
     kamion_id: "",
-    oprema_id: "",
-    datum: "",
-    opis: "",
+    datum_servisa: "",
+    vrsta_servisa: "",
+    opis_servisa: "",
     troskovi: "",
   })
 
@@ -95,9 +87,13 @@ export default function EvidencijaPage() {
     checkAuth()
     fetchServisi()
     fetchGorivo()
-    fetchKamioni()
-    fetchOprema()
   }, [])
+
+  useEffect(() => {
+    if (userRole === "admin") {
+      fetchKamioni()
+    }
+  }, [userRole])
 
   useEffect(() => {
     // Automatski izračunaj ukupno
@@ -114,7 +110,7 @@ export default function EvidencijaPage() {
       const response = await fetch("/api/auth/session")
       if (response.ok) {
         const data = await response.json()
-        setUserRole(data.user.rola)
+        setUserRole(data.user.role)
       } else {
         router.push("/login")
       }
@@ -128,7 +124,9 @@ export default function EvidencijaPage() {
       const response = await fetch("/api/servisi")
       if (response.ok) {
         const data = await response.json()
-        setServisi(data)
+        if (data.success) {
+          setServisi(data.data)
+        }
       }
     } catch (error) {
       console.error("Greška pri učitavanju servisa:", error)
@@ -142,7 +140,9 @@ export default function EvidencijaPage() {
       const response = await fetch("/api/gorivo")
       if (response.ok) {
         const data = await response.json()
-        setGorivo(data)
+        if (data.success) {
+          setGorivo(data.data)
+        }
       }
     } catch (error) {
       console.error("Greška pri učitavanju goriva:", error)
@@ -154,22 +154,12 @@ export default function EvidencijaPage() {
       const response = await fetch("/api/vozni-park")
       if (response.ok) {
         const data = await response.json()
-        setKamioni(data)
+        if (data.success) {
+          setKamioni(data.data)
+        }
       }
     } catch (error) {
       console.error("Greška pri učitavanju kamiona:", error)
-    }
-  }
-
-  const fetchOprema = async () => {
-    try {
-      const response = await fetch("/api/oprema")
-      if (response.ok) {
-        const data = await response.json()
-        setOprema(data)
-      }
-    } catch (error) {
-      console.error("Greška pri učitavanju opreme:", error)
     }
   }
 
@@ -177,21 +167,19 @@ export default function EvidencijaPage() {
     if (servis) {
       setCurrentServis(servis)
       setServisFormData({
-        tip: servis.kamion_id ? "kamion" : "oprema",
-        kamion_id: servis.kamion_id?.toString() || "",
-        oprema_id: servis.oprema_id?.toString() || "",
-        datum: servis.datum.split("T")[0],
-        opis: servis.opis,
-        troskovi: servis.troskovi.toString(),
+        kamion_id: servis.kamion_id.toString(),
+        datum_servisa: servis.datum_servisa.split("T")[0],
+        vrsta_servisa: servis.vrsta_servisa || "",
+        opis_servisa: servis.opis_servisa || "",
+        troskovi: servis.troskovi?.toString() || "",
       })
     } else {
       setCurrentServis(null)
       setServisFormData({
-        tip: "kamion",
         kamion_id: "",
-        oprema_id: "",
-        datum: "",
-        opis: "",
+        datum_servisa: "",
+        vrsta_servisa: "",
+        opis_servisa: "",
         troskovi: "",
       })
     }
@@ -225,14 +213,14 @@ export default function EvidencijaPage() {
     e.preventDefault()
 
     try {
-      const url = currentServis ? `/api/servisi/${currentServis.servis_id}` : "/api/servisi"
+      const url = currentServis ? `/api/servisi/${currentServis.id}` : "/api/servisi"
       const method = currentServis ? "PUT" : "POST"
 
       const payload = {
-        kamion_id: servisFormData.tip === "kamion" ? servisFormData.kamion_id : null,
-        oprema_id: servisFormData.tip === "oprema" ? servisFormData.oprema_id : null,
-        datum: servisFormData.datum,
-        opis: servisFormData.opis,
+        kamion_id: servisFormData.kamion_id,
+        datum_servisa: servisFormData.datum_servisa,
+        vrsta_servisa: servisFormData.vrsta_servisa,
+        opis_servisa: servisFormData.opis_servisa,
         troskovi: servisFormData.troskovi,
       }
 
@@ -247,7 +235,7 @@ export default function EvidencijaPage() {
         fetchServisi()
       } else {
         const error = await response.json()
-        alert(error.error || "Greška pri spremanju servisa")
+        alert(error.message || "Greška pri spremanju servisa")
       }
     } catch (error) {
       console.error("Greška:", error)
@@ -259,7 +247,7 @@ export default function EvidencijaPage() {
     e.preventDefault()
 
     try {
-      const url = currentGorivo ? `/api/gorivo/${currentGorivo.gorivo_id}` : "/api/gorivo"
+      const url = currentGorivo ? `/api/gorivo/${currentGorivo.id}` : "/api/gorivo"
       const method = currentGorivo ? "PUT" : "POST"
 
       const response = await fetch(url, {
@@ -273,7 +261,7 @@ export default function EvidencijaPage() {
         fetchGorivo()
       } else {
         const error = await response.json()
-        alert(error.error || "Greška pri spremanju goriva")
+        alert(error.message || "Greška pri spremanju goriva")
       }
     } catch (error) {
       console.error("Greška:", error)
@@ -299,7 +287,7 @@ export default function EvidencijaPage() {
         }
       } else {
         const error = await response.json()
-        alert(error.error || "Greška pri brisanju")
+        alert(error.message || "Greška pri brisanju")
       }
     } catch (error) {
       console.error("Greška:", error)
@@ -310,16 +298,17 @@ export default function EvidencijaPage() {
   const filteredServisi = servisi.filter((servis) => {
     const searchLower = searchTerm.toLowerCase()
     return (
-      servis.kamion_registracija?.toLowerCase().includes(searchLower) ||
-      servis.oprema_naziv?.toLowerCase().includes(searchLower) ||
-      servis.opis.toLowerCase().includes(searchLower)
+      servis.kamion_tablica?.toLowerCase().includes(searchLower) ||
+      servis.kamion_model?.toLowerCase().includes(searchLower) ||
+      (servis.opis_servisa || "").toLowerCase().includes(searchLower) ||
+      (servis.vrsta_servisa || "").toLowerCase().includes(searchLower)
     )
   })
 
   const filteredGorivo = gorivo.filter((g) => {
     const searchLower = searchTerm.toLowerCase()
     return (
-      g.kamion_registracija.toLowerCase().includes(searchLower) || g.kamion_model.toLowerCase().includes(searchLower)
+      g.kamion_tablica.toLowerCase().includes(searchLower) || g.kamion_model.toLowerCase().includes(searchLower)
     )
   })
 
@@ -339,7 +328,12 @@ export default function EvidencijaPage() {
             <h1 className="text-3xl font-bold">Evidencija</h1>
             <p className="text-muted-foreground">Upravljanje servisima i gorivom</p>
           </div>
-          <ExportImportMenu module="servisi" onImportComplete={fetchServisi} />
+          {userRole === "admin" && (
+            <ExportImportMenu
+              module={activeTab === "gorivo" ? "gorivo" : "servisi"}
+              onImportComplete={activeTab === "gorivo" ? fetchGorivo : fetchServisi}
+            />
+          )}
         </div>
 
         <div className="mb-6">
@@ -368,10 +362,12 @@ export default function EvidencijaPage() {
 
           <TabsContent value="servisi" className="mt-6">
             <div className="mb-4">
-              <Button onClick={() => handleOpenServisDialog()}>
-                <Plus className="mr-2 h-4 w-4" />
-                Novi Servis
-              </Button>
+              {userRole === "admin" && (
+                <Button onClick={() => handleOpenServisDialog()}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Novi Servis
+                </Button>
+              )}
             </div>
 
             <div className="grid gap-4">
@@ -381,42 +377,43 @@ export default function EvidencijaPage() {
                 </Card>
               ) : (
                 filteredServisi.map((servis) => (
-                  <Card key={servis.servis_id}>
+                  <Card key={servis.id}>
                     <CardHeader>
                       <div className="flex justify-between items-start">
                         <div className="space-y-1">
                           <CardTitle className="text-xl">
-                            {servis.kamion_registracija
-                              ? `${servis.kamion_registracija} - ${servis.kamion_model}`
-                              : servis.oprema_naziv}
+                            {servis.kamion_tablica} - {servis.kamion_model}
                           </CardTitle>
-                          <CardDescription>{new Date(servis.datum).toLocaleDateString("bs-BA")}</CardDescription>
+                          <CardDescription>
+                            {new Date(servis.datum_servisa).toLocaleDateString("bs-BA")}
+                          </CardDescription>
                         </div>
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => handleOpenServisDialog(servis)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          {userRole === "admin" && (
+                        {userRole === "admin" && (
+                          <div className="flex gap-2">
+                            <Button variant="ghost" size="icon" onClick={() => handleOpenServisDialog(servis)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={() => {
-                                setDeleteInfo({ type: "servis", id: servis.servis_id })
+                                setDeleteInfo({ type: "servis", id: servis.id })
                                 setIsDeleteDialogOpen(true)
                               }}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        <p className="text-sm">{servis.opis}</p>
+                        {servis.vrsta_servisa && <p className="text-sm font-medium">{servis.vrsta_servisa}</p>}
+                        <p className="text-sm">{servis.opis_servisa || "-"}</p>
                         <div className="flex items-center gap-2 text-lg font-bold">
                           <DollarSign className="h-5 w-5" />
-                          {servis.troskovi.toFixed(2)} KM
+                          {Number(servis.troskovi || 0).toFixed(2)} KM
                         </div>
                       </div>
                     </CardContent>
@@ -428,10 +425,12 @@ export default function EvidencijaPage() {
 
           <TabsContent value="gorivo" className="mt-6">
             <div className="mb-4">
-              <Button onClick={() => handleOpenGorivoDialog()}>
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Punjenje
-              </Button>
+              {userRole === "admin" && (
+                <Button onClick={() => handleOpenGorivoDialog()}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Novo Punjenje
+                </Button>
+              )}
             </div>
 
             <div className="grid gap-4">
@@ -443,32 +442,32 @@ export default function EvidencijaPage() {
                 </Card>
               ) : (
                 filteredGorivo.map((g) => (
-                  <Card key={g.gorivo_id}>
+                  <Card key={g.id}>
                     <CardHeader>
                       <div className="flex justify-between items-start">
                         <div className="space-y-1">
                           <CardTitle className="text-xl">
-                            {g.kamion_registracija} - {g.kamion_model}
+                            {g.kamion_tablica} - {g.kamion_model}
                           </CardTitle>
                           <CardDescription>{new Date(g.datum).toLocaleDateString("bs-BA")}</CardDescription>
                         </div>
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => handleOpenGorivoDialog(g)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          {userRole === "admin" && (
+                        {userRole === "admin" && (
+                          <div className="flex gap-2">
+                            <Button variant="ghost" size="icon" onClick={() => handleOpenGorivoDialog(g)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={() => {
-                                setDeleteInfo({ type: "gorivo", id: g.gorivo_id })
+                                setDeleteInfo({ type: "gorivo", id: g.id })
                                 setIsDeleteDialogOpen(true)
                               }}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -505,87 +504,54 @@ export default function EvidencijaPage() {
             </DialogHeader>
             <form onSubmit={handleServisSubmit}>
               <div className="grid gap-4 py-4">
-                {!currentServis && (
-                  <div className="grid gap-2">
-                    <Label>Tip</Label>
-                    <Select
-                      value={servisFormData.tip}
-                      onValueChange={(value) => setServisFormData({ ...servisFormData, tip: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="kamion">Kamion</SelectItem>
-                        <SelectItem value="oprema">Oprema</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {servisFormData.tip === "kamion" && (
-                  <div className="grid gap-2">
-                    <Label htmlFor="kamion_id">Kamion *</Label>
-                    <Select
-                      value={servisFormData.kamion_id}
-                      onValueChange={(value) => setServisFormData({ ...servisFormData, kamion_id: value })}
-                      disabled={!!currentServis}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Odaberite kamion" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {kamioni.map((kamion) => (
-                          <SelectItem key={kamion.kamion_id} value={kamion.kamion_id.toString()}>
-                            {kamion.registracija} - {kamion.model}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {servisFormData.tip === "oprema" && (
-                  <div className="grid gap-2">
-                    <Label htmlFor="oprema_id">Oprema *</Label>
-                    <Select
-                      value={servisFormData.oprema_id}
-                      onValueChange={(value) => setServisFormData({ ...servisFormData, oprema_id: value })}
-                      disabled={!!currentServis}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Odaberite opremu" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {oprema.map((o) => (
-                          <SelectItem key={o.oprema_id} value={o.oprema_id.toString()}>
-                            {o.naziv}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+                <div className="grid gap-2">
+                  <Label htmlFor="kamion_id">Kamion *</Label>
+                  <Select
+                    value={servisFormData.kamion_id}
+                    onValueChange={(value) => setServisFormData({ ...servisFormData, kamion_id: value })}
+                    disabled={!!currentServis}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Odaberite kamion" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {kamioni.map((kamion) => (
+                        <SelectItem key={kamion.id} value={kamion.id.toString()}>
+                          {kamion.registarska_tablica} - {kamion.model}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 <div className="grid gap-2">
-                  <Label htmlFor="datum">Datum *</Label>
+                  <Label htmlFor="datum_servisa">Datum servisa *</Label>
                   <Input
-                    id="datum"
+                    id="datum_servisa"
                     type="date"
-                    value={servisFormData.datum}
-                    onChange={(e) => setServisFormData({ ...servisFormData, datum: e.target.value })}
+                    value={servisFormData.datum_servisa}
+                    onChange={(e) => setServisFormData({ ...servisFormData, datum_servisa: e.target.value })}
                     required
                   />
                 </div>
 
                 <div className="grid gap-2">
-                  <Label htmlFor="opis">Opis *</Label>
+                  <Label htmlFor="vrsta_servisa">Vrsta servisa</Label>
+                  <Input
+                    id="vrsta_servisa"
+                    value={servisFormData.vrsta_servisa}
+                    onChange={(e) => setServisFormData({ ...servisFormData, vrsta_servisa: e.target.value })}
+                    placeholder="Redovni servis, gume, itd."
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="opis_servisa">Opis servisa</Label>
                   <Textarea
-                    id="opis"
-                    value={servisFormData.opis}
-                    onChange={(e) => setServisFormData({ ...servisFormData, opis: e.target.value })}
+                    id="opis_servisa"
+                    value={servisFormData.opis_servisa}
+                    onChange={(e) => setServisFormData({ ...servisFormData, opis_servisa: e.target.value })}
                     placeholder="Opis servisa..."
-                    required
                   />
                 </div>
 
@@ -634,8 +600,8 @@ export default function EvidencijaPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {kamioni.map((kamion) => (
-                        <SelectItem key={kamion.kamion_id} value={kamion.kamion_id.toString()}>
-                          {kamion.registracija} - {kamion.model}
+                        <SelectItem key={kamion.id} value={kamion.id.toString()}>
+                          {kamion.registarska_tablica} - {kamion.model}
                         </SelectItem>
                       ))}
                     </SelectContent>
