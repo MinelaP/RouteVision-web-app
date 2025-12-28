@@ -87,6 +87,7 @@ export default function EvidencijaPage() {
     checkAuth()
     fetchServisi()
     fetchGorivo()
+    fetchKamioni()
   }, [])
 
   useEffect(() => {
