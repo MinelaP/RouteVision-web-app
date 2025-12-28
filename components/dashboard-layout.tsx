@@ -59,6 +59,7 @@ const adminNavItems = [
 const driverNavItems = [
     { href: "/dashboard", icon: LayoutDashboard, label: "Kontrolna tabla" },
     { href: "/dashboard/ture", icon: Route, label: "Moje ture" },
+    { href: "/dashboard/moj-kamion", icon: Truck, label: "Moj kamion" },
     { href: "/dashboard/evidencija", icon: Wrench, label: "Evidencija" },
 ]
 

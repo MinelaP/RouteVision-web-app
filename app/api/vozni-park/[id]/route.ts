@@ -30,9 +30,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const [kamioni] = await pool.execute<KamionRow[]>(
-      `SELECT k.*, v.ime as vozac_ime, v.prezime as vozac_prezime 
+      `SELECT k.*, k.zaduzeni_vozac_id as vozac_id, v.ime as vozac_ime, v.prezime as vozac_prezime 
        FROM kamion k 
-       LEFT JOIN vozac v ON k.vozac_id = v.id 
+       LEFT JOIN vozac v ON k.zaduzeni_vozac_id = v.id 
        WHERE k.id = ?`,
       [id],
     )
@@ -79,10 +79,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       vozac_id,
     } = body
 
+    const normalizedVozacId = vozac_id && Number(vozac_id) !== 0 ? Number(vozac_id) : null
+
     await pool.execute<ResultSetHeader>(
       `UPDATE kamion SET registarska_tablica = ?, marka = ?, model = ?, godina_proizvodnje = ?, 
        kapacitet_tone = ?, vrsta_voza = ?, stanje_kilometra = ?, datum_registracije = ?, 
-       datum_zakljucnog_pregleda = ?, vozac_id = ? WHERE id = ?`,
+       datum_zakljucnog_pregleda = ?, zaduzeni_vozac_id = ? WHERE id = ?`,
       [
         registarska_tablica,
         marka,
@@ -93,7 +95,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         stanje_kilometra || 0,
         datum_registracije || null,
         datum_zakljucnog_pregleda || null,
-        vozac_id || null,
+        normalizedVozacId,
         id,
       ],
     )

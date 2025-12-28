@@ -1,44 +1,57 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { query } from "@/lib/db"
+import pool from "@/lib/db"
 import { getSessionUser } from "@/lib/auth"
+import type { ResultSetHeader, RowDataPacket } from "mysql2"
+
+interface ServisRow extends RowDataPacket {
+  id: number
+  kamion_id: number
+  kamion_tablica: string | null
+  kamion_model: string | null
+  datum_servisa: Date
+  vrsta_servisa: string | null
+  opis_servisa: string | null
+  troskovi: number | null
+  vozac_id: number | null
+}
 
 // GET - Dobavi sve servise
 export async function GET(request: NextRequest) {
   try {
     const user = await getSessionUser(request)
     if (!user) {
-      return NextResponse.json({ error: "Neautorizovano" }, { status: 401 })
+      return NextResponse.json({ success: false, message: "Neautorizovano" }, { status: 401 })
     }
 
-    const searchParams = request.nextUrl.searchParams
-    const tip = searchParams.get("tip") // 'kamion' ili 'oprema'
-
+    const params: Array<string | number> = []
     let sql = `
       SELECT 
-        s.*,
-        k.registracija as kamion_registracija,
-        k.model as kamion_model,
-        o.naziv as oprema_naziv
-      FROM servis s
-      LEFT JOIN kamion k ON s.kamion_id = k.kamion_id
-      LEFT JOIN oprema o ON s.oprema_id = o.oprema_id
+        s.id,
+        s.kamion_id,
+        s.vozac_id,
+        s.datum_servisa,
+        s.vrsta_servisa,
+        s.opisServisa as opis_servisa,
+        s.troskovi,
+        k.registarska_tablica as kamion_tablica,
+        k.model as kamion_model
+      FROM servisni_dnevnik s
+      LEFT JOIN kamion k ON s.kamion_id = k.id
+      WHERE s.aktivan = TRUE
     `
 
-    const params: any[] = []
-
-    if (tip === "kamion") {
-      sql += " WHERE s.kamion_id IS NOT NULL"
-    } else if (tip === "oprema") {
-      sql += " WHERE s.oprema_id IS NOT NULL"
+    if (user.role === "vozac") {
+      sql += " AND s.kamion_id = (SELECT kamion_id FROM vozac WHERE id = ?)"
+      params.push(user.id)
     }
 
-    sql += " ORDER BY s.datum DESC"
+    sql += " ORDER BY s.datum_servisa DESC"
 
-    const servisi = await query(sql, params)
-    return NextResponse.json(servisi)
+    const [servisi] = await pool.execute<ServisRow[]>(sql, params)
+    return NextResponse.json({ success: true, data: servisi })
   } catch (error) {
     console.error("Greška pri dohvaćanju servisa:", error)
-    return NextResponse.json({ error: "Greška servera" }, { status: 500 })
+    return NextResponse.json({ success: false, message: "Greška servera" }, { status: 500 })
   }
 }
 
@@ -47,46 +60,51 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getSessionUser(request)
     if (!user) {
-      return NextResponse.json({ error: "Neautorizovano" }, { status: 401 })
+      return NextResponse.json({ success: false, message: "Neautorizovano" }, { status: 401 })
+    }
+
+    if (user.role !== "admin") {
+      return NextResponse.json({ success: false, message: "Nemate dozvolu" }, { status: 403 })
     }
 
     const data = await request.json()
-    const { kamion_id, oprema_id, datum, opis, troskovi } = data
+    const { kamion_id, datum_servisa, vrsta_servisa, opis_servisa, troskovi } = data
+    const kamionId = Number(kamion_id)
+    const parsedTroskovi = Number.parseFloat(troskovi)
 
-    // Validacija - mora biti ili kamion_id ili oprema_id
-    if ((!kamion_id && !oprema_id) || (kamion_id && oprema_id)) {
+    if (!kamionId || !datum_servisa || Number.isNaN(parsedTroskovi)) {
       return NextResponse.json(
         {
-          error: "Morate odabrati ili kamion ili opremu",
+          success: false,
+          message: "Kamion, datum servisa i troškovi su obavezni",
         },
         { status: 400 },
       )
     }
 
-    if (!datum || !opis || !troskovi) {
-      return NextResponse.json(
-        {
-          error: "Sva obavezna polja moraju biti popunjena",
-        },
-        { status: 400 },
-      )
-    }
-
-    const result = await query(
-      `INSERT INTO servis (kamion_id, oprema_id, datum, opis, troskovi)
-       VALUES (?, ?, ?, ?, ?)`,
-      [kamion_id || null, oprema_id || null, datum, opis, Number.parseFloat(troskovi)],
+    const [result] = await pool.execute<ResultSetHeader>(
+      `INSERT INTO servisni_dnevnik (kamion_id, datum_servisa, vrsta_servisa, opisServisa, troskovi, nadlezni_admin_id)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        kamionId,
+        datum_servisa,
+        vrsta_servisa || null,
+        opis_servisa || null,
+        parsedTroskovi,
+        user.id,
+      ],
     )
 
     return NextResponse.json(
       {
+        success: true,
         message: "Servis uspješno kreiran",
-        servis_id: result.insertId,
+        id: result.insertId,
       },
       { status: 201 },
     )
   } catch (error) {
     console.error("Greška pri kreiranju servisa:", error)
-    return NextResponse.json({ error: "Greška servera" }, { status: 500 })
+    return NextResponse.json({ success: false, message: "Greška servera" }, { status: 500 })
   }
 }

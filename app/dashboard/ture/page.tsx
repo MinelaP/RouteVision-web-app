@@ -24,37 +24,39 @@ import { Plus, Pencil, Trash2, Search, Calendar, User, Truck } from "lucide-reac
 import { useRouter } from "next/navigation"
 
 interface Tura {
-  tura_id: number
+  id: number
+  broj_ture: string
   vozac_id: number
   vozac_ime: string
   vozac_prezime: string
   kamion_id: number
-  kamion_registracija: string
+  kamion_tablica: string
   kamion_model: string
-  narudba_id: number
-  narudzba_naziv: string
+  narudzba_id: number
+  narudzba_broj: string
   klijent_naziv: string
   datum_pocetka: string
-  datum_zavrsetka?: string
+  datum_kraja?: string
   status: string
   napomena?: string
 }
 
 interface Vozac {
-  vozac_id: number
+  id: number
   ime: string
   prezime: string
 }
 
 interface Kamion {
-  kamion_id: number
-  registracija: string
+  id: number
+  registarska_tablica: string
   model: string
 }
 
 interface Narudzba {
-  narudba_id: number
-  naziv: string
+  id: number
+  broj_narudzbe: string
+  klijent_naziv: string
 }
 
 export default function TurePage() {
@@ -73,11 +75,12 @@ export default function TurePage() {
   const [userRole, setUserRole] = useState<"admin" | "vozac">("admin")
 
   const [formData, setFormData] = useState({
+    broj_ture: "",
     vozac_id: "",
     kamion_id: "",
-    narudba_id: "",
+    narudzba_id: "",
     datum_pocetka: "",
-    datum_zavrsetka: "",
+    datum_kraja: "",
     status: "U toku",
     napomena: "",
   })
@@ -85,17 +88,22 @@ export default function TurePage() {
   useEffect(() => {
     checkAuth()
     fetchTure()
-    fetchVozaci()
-    fetchKamioni()
-    fetchNarudzbe()
   }, [])
+
+  useEffect(() => {
+    if (userRole === "admin") {
+      fetchVozaci()
+      fetchKamioni()
+      fetchNarudzbe()
+    }
+  }, [userRole])
 
   const checkAuth = async () => {
     try {
       const response = await fetch("/api/auth/session")
       if (response.ok) {
         const data = await response.json()
-        setUserRole(data.user.rola)
+        setUserRole(data.user.role)
       } else {
         router.push("/login")
       }
@@ -109,7 +117,9 @@ export default function TurePage() {
       const response = await fetch("/api/ture")
       if (response.ok) {
         const data = await response.json()
-        setTure(data)
+        if (data.success) {
+          setTure(data.data)
+        }
       }
     } catch (error) {
       console.error("Greška pri učitavanju tura:", error)
@@ -120,10 +130,12 @@ export default function TurePage() {
 
   const fetchVozaci = async () => {
     try {
-      const response = await fetch("/api/osoblje?rola=vozac")
+      const response = await fetch("/api/osoblje?tip=vozac")
       if (response.ok) {
         const data = await response.json()
-        setVozaci(data)
+        if (data.success) {
+          setVozaci(data.data)
+        }
       }
     } catch (error) {
       console.error("Greška pri učitavanju vozača:", error)
@@ -135,7 +147,9 @@ export default function TurePage() {
       const response = await fetch("/api/vozni-park")
       if (response.ok) {
         const data = await response.json()
-        setKamioni(data)
+        if (data.success) {
+          setKamioni(data.data)
+        }
       }
     } catch (error) {
       console.error("Greška pri učitavanju kamiona:", error)
@@ -147,7 +161,9 @@ export default function TurePage() {
       const response = await fetch("/api/narudzbe")
       if (response.ok) {
         const data = await response.json()
-        setNarudzbe(data)
+        if (data.success) {
+          setNarudzbe(data.data)
+        }
       }
     } catch (error) {
       console.error("Greška pri učitavanju narudžbi:", error)
@@ -158,22 +174,24 @@ export default function TurePage() {
     if (tura) {
       setCurrentTura(tura)
       setFormData({
+        broj_ture: tura.broj_ture,
         vozac_id: tura.vozac_id.toString(),
         kamion_id: tura.kamion_id.toString(),
-        narudba_id: tura.narudba_id.toString(),
+        narudzba_id: tura.narudzba_id.toString(),
         datum_pocetka: tura.datum_pocetka.split("T")[0],
-        datum_zavrsetka: tura.datum_zavrsetka ? tura.datum_zavrsetka.split("T")[0] : "",
+        datum_kraja: tura.datum_kraja ? tura.datum_kraja.split("T")[0] : "",
         status: tura.status,
         napomena: tura.napomena || "",
       })
     } else {
       setCurrentTura(null)
       setFormData({
+        broj_ture: "",
         vozac_id: "",
         kamion_id: "",
-        narudba_id: "",
+        narudzba_id: "",
         datum_pocetka: "",
-        datum_zavrsetka: "",
+        datum_kraja: "",
         status: "U toku",
         napomena: "",
       })
@@ -185,7 +203,7 @@ export default function TurePage() {
     e.preventDefault()
 
     try {
-      const url = currentTura ? `/api/ture/${currentTura.tura_id}` : "/api/ture"
+      const url = currentTura ? `/api/ture/${currentTura.id}` : "/api/ture"
       const method = currentTura ? "PUT" : "POST"
 
       const response = await fetch(url, {
@@ -199,7 +217,7 @@ export default function TurePage() {
         fetchTure()
       } else {
         const error = await response.json()
-        alert(error.error || "Greška pri spremanju ture")
+        alert(error.message || "Greška pri spremanju ture")
       }
     } catch (error) {
       console.error("Greška:", error)
@@ -221,7 +239,7 @@ export default function TurePage() {
         fetchTure()
       } else {
         const error = await response.json()
-        alert(error.error || "Greška pri brisanju ture")
+        alert(error.message || "Greška pri brisanju ture")
       }
     } catch (error) {
       console.error("Greška:", error)
@@ -231,11 +249,12 @@ export default function TurePage() {
 
   const filteredTure = ture.filter((tura) => {
     const matchesSearch =
+      tura.broj_ture.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tura.vozac_ime.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tura.vozac_prezime.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tura.kamion_registracija.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tura.narudzba_naziv.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tura.klijent_naziv.toLowerCase().includes(searchTerm.toLowerCase())
+      (tura.kamion_tablica || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (tura.narudzba_broj || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (tura.klijent_naziv || "").toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesTab = activeTab === "sve" || tura.status === activeTab
 
@@ -304,12 +323,14 @@ export default function TurePage() {
                 </Card>
               ) : (
                 filteredTure.map((tura) => (
-                  <Card key={tura.tura_id}>
+                  <Card key={tura.id}>
                     <CardHeader>
                       <div className="flex justify-between items-start">
                         <div className="space-y-1">
-                          <CardTitle className="text-xl">{tura.narudzba_naziv}</CardTitle>
-                          <CardDescription>Klijent: {tura.klijent_naziv}</CardDescription>
+                          <CardTitle className="text-xl">{tura.narudzba_broj}</CardTitle>
+                          <CardDescription>
+                            Broj ture: {tura.broj_ture} • Klijent: {tura.klijent_naziv}
+                          </CardDescription>
                         </div>
                         <div className="flex gap-2">
                           {getStatusBadge(tura.status)}
@@ -322,7 +343,7 @@ export default function TurePage() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => {
-                                  setDeleteId(tura.tura_id)
+                                  setDeleteId(tura.id)
                                   setIsDeleteDialogOpen(true)
                                 }}
                               >
@@ -348,7 +369,7 @@ export default function TurePage() {
                           <Truck className="h-4 w-4 text-muted-foreground" />
                           <div>
                             <p className="text-sm text-muted-foreground">Kamion</p>
-                            <p className="font-medium">{tura.kamion_registracija}</p>
+                            <p className="font-medium">{tura.kamion_tablica}</p>
                             <p className="text-sm text-muted-foreground">{tura.kamion_model}</p>
                           </div>
                         </div>
@@ -359,13 +380,13 @@ export default function TurePage() {
                             <p className="font-medium">{new Date(tura.datum_pocetka).toLocaleDateString("bs-BA")}</p>
                           </div>
                         </div>
-                        {tura.datum_zavrsetka && (
+                        {tura.datum_kraja && (
                           <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4 text-muted-foreground" />
                             <div>
                               <p className="text-sm text-muted-foreground">Datum završetka</p>
                               <p className="font-medium">
-                                {new Date(tura.datum_zavrsetka).toLocaleDateString("bs-BA")}
+                                {new Date(tura.datum_kraja).toLocaleDateString("bs-BA")}
                               </p>
                             </div>
                           </div>
@@ -399,6 +420,17 @@ export default function TurePage() {
                 {userRole === "admin" ? (
                   <>
                     <div className="grid gap-2">
+                      <Label htmlFor="broj_ture">Broj ture *</Label>
+                      <Input
+                        id="broj_ture"
+                        value={formData.broj_ture}
+                        onChange={(e) => setFormData({ ...formData, broj_ture: e.target.value })}
+                        placeholder="TUR-2024-001"
+                        required
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
                       <Label htmlFor="vozac_id">Vozač *</Label>
                       <Select
                         value={formData.vozac_id}
@@ -409,7 +441,7 @@ export default function TurePage() {
                         </SelectTrigger>
                         <SelectContent>
                           {vozaci.map((vozac) => (
-                            <SelectItem key={vozac.vozac_id} value={vozac.vozac_id.toString()}>
+                            <SelectItem key={vozac.id} value={vozac.id.toString()}>
                               {vozac.ime} {vozac.prezime}
                             </SelectItem>
                           ))}
@@ -428,8 +460,8 @@ export default function TurePage() {
                         </SelectTrigger>
                         <SelectContent>
                           {kamioni.map((kamion) => (
-                            <SelectItem key={kamion.kamion_id} value={kamion.kamion_id.toString()}>
-                              {kamion.registracija} - {kamion.model}
+                            <SelectItem key={kamion.id} value={kamion.id.toString()}>
+                              {kamion.registarska_tablica} - {kamion.model}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -437,18 +469,18 @@ export default function TurePage() {
                     </div>
 
                     <div className="grid gap-2">
-                      <Label htmlFor="narudba_id">Narudžba *</Label>
+                      <Label htmlFor="narudzba_id">Narudžba *</Label>
                       <Select
-                        value={formData.narudba_id}
-                        onValueChange={(value) => setFormData({ ...formData, narudba_id: value })}
+                        value={formData.narudzba_id}
+                        onValueChange={(value) => setFormData({ ...formData, narudzba_id: value })}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Odaberite narudžbu" />
                         </SelectTrigger>
                         <SelectContent>
                           {narudzbe.map((narudzba) => (
-                            <SelectItem key={narudzba.narudba_id} value={narudzba.narudba_id.toString()}>
-                              {narudzba.naziv}
+                            <SelectItem key={narudzba.id} value={narudzba.id.toString()}>
+                              {narudzba.broj_narudzbe} - {narudzba.klijent_naziv}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -467,12 +499,12 @@ export default function TurePage() {
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="datum_zavrsetka">Datum Završetka</Label>
+                        <Label htmlFor="datum_kraja">Datum Završetka</Label>
                         <Input
-                          id="datum_zavrsetka"
+                          id="datum_kraja"
                           type="date"
-                          value={formData.datum_zavrsetka}
-                          onChange={(e) => setFormData({ ...formData, datum_zavrsetka: e.target.value })}
+                          value={formData.datum_kraja}
+                          onChange={(e) => setFormData({ ...formData, datum_kraja: e.target.value })}
                         />
                       </div>
                     </div>

@@ -67,7 +67,7 @@ export default function FakturePage() {
       const response = await fetch("/api/auth/session")
       if (response.ok) {
         const data = await response.json()
-        if (data.user.rola !== "admin") {
+        if (data.user.role !== "admin") {
           router.push("/dashboard")
         }
       } else {
@@ -97,13 +97,14 @@ export default function FakturePage() {
       const response = await fetch("/api/ture")
       if (response.ok) {
         const data = await response.json()
-        // Kreiraj listu tura sa dodatnim informacijama
-        const tureList = data.map((tura: any) => ({
-          tura_id: tura.tura_id,
-          narudzba_naziv: tura.narudzba_naziv,
-          klijent_naziv: tura.klijent_naziv,
-        }))
-        setTure(tureList)
+        if (data.success) {
+          const tureList = data.data.map((tura: any) => ({
+            tura_id: tura.id,
+            narudzba_naziv: tura.narudzba_broj,
+            klijent_naziv: tura.klijent_naziv,
+          }))
+          setTure(tureList)
+        }
       }
     } catch (error) {
       console.error("Greška pri učitavanju tura:", error)

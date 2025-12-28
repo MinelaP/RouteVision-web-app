@@ -5,10 +5,10 @@ import type { RowDataPacket, ResultSetHeader } from "mysql2"
 
 interface NarudbaRow extends RowDataPacket {
   id: number
-  broj_narudbe: string
+  broj_narudzbe: string
   klijent_id: number
   klijent_naziv: string
-  datum_narudbe: Date
+  datum_narudzbe: Date
   datum_isporuke: Date
   vrsta_robe: string
   kolicina: number
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     const [narudzbe] = await pool.execute<NarudbaRow[]>(
       `SELECT n.*, k.naziv_firme as klijent_naziv 
-       FROM narudba n 
+       FROM narudzba n 
        LEFT JOIN klijent k ON n.klijent_id = k.id 
        ORDER BY n.datum_kreiranja DESC`,
     )
@@ -69,9 +69,9 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const {
-      broj_narudbe,
+      broj_narudzbe,
       klijent_id,
-      datum_narudbe,
+      datum_narudzbe,
       datum_isporuke,
       vrsta_robe,
       kolicina,
@@ -83,25 +83,27 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Validacija
-    if (!broj_narudbe || !klijent_id) {
+    if (!broj_narudzbe || !klijent_id) {
       return NextResponse.json({ success: false, message: "Broj narudžbe i klijent su obavezni" }, { status: 400 })
     }
 
     // Provjera da li broj narudžbe već postoji
-    const [existing] = await pool.execute<NarudbaRow[]>("SELECT id FROM narudba WHERE broj_narudbe = ?", [broj_narudbe])
+    const [existing] = await pool.execute<NarudbaRow[]>("SELECT id FROM narudzba WHERE broj_narudzbe = ?", [
+      broj_narudzbe,
+    ])
 
     if (existing.length > 0) {
       return NextResponse.json({ success: false, message: "Broj narudžbe već postoji" }, { status: 400 })
     }
 
     const [result] = await pool.execute<ResultSetHeader>(
-      `INSERT INTO narudba (broj_narudbe, klijent_id, datum_narudbe, datum_isporuke, vrsta_robe, 
+      `INSERT INTO narudzba (broj_narudzbe, klijent_id, datum_narudzbe, datum_isporuke, vrsta_robe, 
        kolicina, jedinica_mjere, lokacija_preuzimanja, lokacija_dostave, napomena, status) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        broj_narudbe,
+        broj_narudzbe,
         klijent_id,
-        datum_narudbe || null,
+        datum_narudzbe || null,
         datum_isporuke || null,
         vrsta_robe || null,
         kolicina || null,

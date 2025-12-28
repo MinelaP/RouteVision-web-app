@@ -79,12 +79,20 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       poreska_broj,
       naziv_banke,
       racun_broj,
+      aktivan,
     } = body
+
+    const [existing] = await pool.execute<KlijentRow[]>("SELECT aktivan FROM klijent WHERE id = ?", [id])
+    if (existing.length === 0) {
+      return NextResponse.json({ success: false, message: "Klijent nije pronađen" }, { status: 404 })
+    }
+
+    const updatedAktivan = typeof aktivan === "boolean" ? aktivan : Boolean(existing[0].aktivan)
 
     await pool.execute<ResultSetHeader>(
       `UPDATE klijent SET naziv_firme = ?, tip_klijenta = ?, adresa = ?, mjesto = ?, postanskiBroj = ?, 
        drzava = ?, kontakt_osoba = ?, email = ?, broj_telefona = ?, broj_faksa = ?, poreska_broj = ?, 
-       naziv_banke = ?, racun_broj = ? WHERE id = ?`,
+       naziv_banke = ?, racun_broj = ?, aktivan = ? WHERE id = ?`,
       [
         naziv_firme,
         tip_klijenta || null,
@@ -99,6 +107,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         poreska_broj || null,
         naziv_banke || null,
         racun_broj || null,
+        updatedAktivan,
         id,
       ],
     )

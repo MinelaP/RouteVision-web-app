@@ -14,14 +14,20 @@ export async function GET(request: NextRequest) {
 
     const fakture = await query(
       `SELECT 
-        f.*,
-        t.tura_id,
-        n.naziv as narudzba_naziv,
-        k.naziv as klijent_naziv
+        f.id as faktura_id,
+        f.broj_fakture,
+        f.tura_id,
+        f.klijent_id,
+        f.datum_izdavanja,
+        COALESCE(f.ukupan_iznos, f.iznos_usluge) as iznos,
+        f.datoteka_path as putanja_dokumenta,
+        t.id as tura_id,
+        n.broj_narudzbe as narudzba_naziv,
+        k.naziv_firme as klijent_naziv
       FROM fakture f
-      LEFT JOIN tura t ON f.tura_id = t.tura_id
-      LEFT JOIN narudba n ON t.narudba_id = n.narudba_id
-      LEFT JOIN klijent k ON n.klijent_id = k.klijent_id
+      LEFT JOIN tura t ON f.tura_id = t.id
+      LEFT JOIN narudzba n ON t.narudzba_id = n.id
+      LEFT JOIN klijent k ON f.klijent_id = k.id
       ORDER BY f.datum_izdavanja DESC`,
     )
 
@@ -36,7 +42,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await getSessionUser(request)
-    if (!user || user.rola !== "admin") {
+    if (!user || user.role !== "admin") {
       return NextResponse.json({ error: "Nemate dozvolu" }, { status: 403 })
     }
 
@@ -81,11 +87,27 @@ export async function POST(request: NextRequest) {
       putanja_dokumenta = `/uploads/fakture/${fileName}`
     }
 
+    const [ture] = await query(
+      `SELECT n.klijent_id
+       FROM tura t
+       LEFT JOIN narudzba n ON t.narudzba_id = n.id
+       WHERE t.id = ?`,
+      [tura_id],
+    )
+
+    if (ture.length === 0) {
+      return NextResponse.json({ error: "Tura nije pronađena" }, { status: 404 })
+    }
+
+    const klijent_id = ture[0].klijent_id
+
+    const parsedIznos = Number.parseFloat(iznos)
+
     // Spremi u bazu
     const result = await query(
-      `INSERT INTO fakture (tura_id, broj_fakture, datum_izdavanja, iznos, putanja_dokumenta)
-       VALUES (?, ?, ?, ?, ?)`,
-      [tura_id, broj_fakture, datum_izdavanja, Number.parseFloat(iznos), putanja_dokumenta],
+      `INSERT INTO fakture (tura_id, klijent_id, broj_fakture, datum_izdavanja, iznos_usluge, ukupan_iznos, datoteka_path)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [tura_id, klijent_id, broj_fakture, datum_izdavanja, parsedIznos, parsedIznos, putanja_dokumenta],
     )
 
     return NextResponse.json(

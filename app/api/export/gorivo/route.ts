@@ -3,15 +3,15 @@ import pool from "@/lib/db"
 import { getSessionUser } from "@/lib/auth"
 import type { RowDataPacket } from "mysql2"
 
-interface ServisRow extends RowDataPacket {
+interface GorivoRow extends RowDataPacket {
   id: number
   kamion_id: number
   kamion_tablica: string | null
   kamion_model: string | null
-  datum_servisa: Date
-  vrsta_servisa: string | null
-  opis_servisa: string | null
-  troskovi: number | null
+  datum: Date
+  litara: number
+  cijena_po_litri: number
+  ukupno: number
 }
 
 export async function GET(request: NextRequest) {
@@ -21,25 +21,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Nemate dozvolu" }, { status: 403 })
     }
 
-    const [servisi] = await pool.execute<ServisRow[]>(`
+    const [gorivo] = await pool.execute<GorivoRow[]>(`
       SELECT 
-        s.id,
-        s.kamion_id,
-        s.datum_servisa,
-        s.vrsta_servisa,
-        s.opisServisa as opis_servisa,
-        s.troskovi,
+        g.id,
+        g.kamion_id,
+        g.datum,
+        g.litara,
+        g.cijena_po_litri,
+        g.ukupno,
         k.registarska_tablica as kamion_tablica,
         k.model as kamion_model
-      FROM servisni_dnevnik s
-      LEFT JOIN kamion k ON s.kamion_id = k.id
-      WHERE s.aktivan = TRUE
-      ORDER BY s.datum_servisa DESC
+      FROM gorivo g
+      LEFT JOIN kamion k ON g.kamion_id = k.id
+      WHERE g.aktivan = TRUE
+      ORDER BY g.datum DESC
     `)
 
-    return NextResponse.json(servisi)
+    return NextResponse.json(gorivo)
   } catch (error) {
-    console.error("Greška pri exportu servisa:", error)
+    console.error("Greška pri exportu goriva:", error)
     return NextResponse.json({ error: "Greška servera" }, { status: 500 })
   }
 }
