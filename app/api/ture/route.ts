@@ -21,6 +21,60 @@ interface TuraRow extends RowDataPacket {
   napomena: string | null
 }
 
+interface VozacKamionRow extends RowDataPacket {
+  kamion_id: number | null
+}
+
+interface KamionIdRow extends RowDataPacket {
+  id: number
+}
+
+async function getVozacKamionIds(vozacId: number): Promise<number[]> {
+  const kamionIds = new Set<number>()
+
+  const [primaryRows] = await pool.execute<VozacKamionRow[]>(
+    "SELECT kamion_id FROM vozac WHERE id = ? AND kamion_id IS NOT NULL",
+    [vozacId],
+  )
+  for (const row of primaryRows) {
+    if (row.kamion_id) kamionIds.add(row.kamion_id)
+  }
+
+  const [assignedRows] = await pool.execute<KamionIdRow[]>(
+    "SELECT id FROM kamion WHERE aktivan = TRUE AND zaduzeni_vozac_id = ?",
+    [vozacId],
+  )
+  for (const row of assignedRows) {
+    if (row.id) kamionIds.add(row.id)
+  }
+
+  try {
+    const [mappingRows] = await pool.execute<KamionIdRow[]>(
+      "SELECT kamion_id as id FROM vozac_kamion WHERE vozac_id = ?",
+      [vozacId],
+    )
+    for (const row of mappingRows) {
+      if (row.id) kamionIds.add(row.id)
+    }
+  } catch {
+    // mapping table may not exist
+  }
+
+  try {
+    const [mappingRows] = await pool.execute<KamionIdRow[]>(
+      "SELECT kamion_id as id FROM kamion_vozac WHERE vozac_id = ?",
+      [vozacId],
+    )
+    for (const row of mappingRows) {
+      if (row.id) kamionIds.add(row.id)
+    }
+  } catch {
+    // mapping table may not exist
+  }
+
+  return Array.from(kamionIds)
+}
+
 // GET - Dobavi sve ture
 export async function GET(request: NextRequest) {
   try {
@@ -91,15 +145,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: "Neautorizovano" }, { status: 401 })
     }
 
-    if (user.role !== "admin") {
+    if (user.role !== "admin" && user.role !== "vozac") {
       return NextResponse.json({ success: false, message: "Nemate dozvolu" }, { status: 403 })
     }
 
     const data = await request.json()
-    const { broj_ture, vozac_id, kamion_id, narudzba_id, datum_pocetka, datum_kraja, status, napomena } = data
+    const {
+      broj_ture,
+      vozac_id: vozacIdFromBody,
+      kamion_id,
+      narudzba_id,
+      datum_pocetka,
+      datum_kraja,
+      status,
+      napomena,
+    } = data
+
+    const vozac_id = user.role === "vozac" ? user.id : vozacIdFromBody
 
     if (!broj_ture || !vozac_id || !kamion_id || !narudzba_id || !datum_pocetka) {
       return NextResponse.json({ success: false, message: "Sva obavezna polja moraju biti popunjena" }, { status: 400 })
+    }
+
+    if (user.role === "vozac") {
+      const vozacKamioni = await getVozacKamionIds(user.id)
+      if (vozacKamioni.length === 0) {
+        return NextResponse.json({ success: false, message: "Nema dodijeljenog kamiona" }, { status: 400 })
+      }
+
+      const requestedKamionId = Number(kamion_id)
+      if (!vozacKamioni.includes(requestedKamionId)) {
+        return NextResponse.json({ success: false, message: "Kamion nije dodijeljen vozaču" }, { status: 403 })
+      }
     }
 
     const [existing] = await pool.execute<RowDataPacket[]>("SELECT id FROM tura WHERE broj_ture = ?", [broj_ture])
