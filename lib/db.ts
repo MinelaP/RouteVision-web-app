@@ -19,7 +19,7 @@ const pool = mysql.createPool({
     ...(process.env.DB_PASSWORD ? { password: process.env.DB_PASSWORD } : {}),
 })
 
-// Testiranje konekcije pri inicijalizaciji
+// Testiranje konekcije pri inicijalizaciji a
 pool
     .getConnection()
     .then((connection) => {
