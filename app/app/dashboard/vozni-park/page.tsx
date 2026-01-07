@@ -222,7 +222,15 @@ export default function VozniParkPage() {
         body: JSON.stringify(body),
       })
 
-      const data = await response.json()
+      const responseText = await response.text()
+      let data: { success?: boolean; message?: string } = { success: false, message: "Prazan odgovor servera" }
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText)
+        } catch {
+          data = { success: false, message: responseText }
+        }
+      }
 
       if (data.success) {
         toast({
@@ -234,7 +242,7 @@ export default function VozniParkPage() {
       } else {
         toast({
           title: "Greška",
-          description: data.message,
+          description: data.message || `Greška ${response.status}`,
           variant: "destructive",
         })
       }
