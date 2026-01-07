@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { getSessionUser } from "@/lib/auth"
+import { normalizeDateInput } from "@/lib/date"
 import type { RowDataPacket, ResultSetHeader } from "mysql2"
 
 interface GorivoRow extends RowDataPacket {
@@ -82,12 +83,13 @@ export async function POST(request: NextRequest) {
     const parsedLitara = Number.parseFloat(litara)
     const parsedCijena = Number.parseFloat(cijena_po_litri)
     const parsedUkupno = Number.parseFloat(ukupno)
+    const normalizedDatum = normalizeDateInput(datum)
 
-    if (!datum || Number.isNaN(parsedLitara) || Number.isNaN(parsedCijena) || Number.isNaN(parsedUkupno)) {
+    if (!normalizedDatum || Number.isNaN(parsedLitara) || Number.isNaN(parsedCijena) || Number.isNaN(parsedUkupno)) {
       return NextResponse.json(
           {
             success: false,
-            message: "Sva obavezna polja moraju biti popunjena",
+            message: "Sva obavezna polja moraju biti popunjena i validna",
           },
           { status: 400 },
       )
@@ -118,7 +120,7 @@ export async function POST(request: NextRequest) {
     const [result] = await pool.execute<ResultSetHeader>(
       `INSERT INTO gorivo (kamion_id, datum, litara, cijena_po_litri, ukupno)
        VALUES (?, ?, ?, ?, ?)`,
-      [kamionId, datum, parsedLitara, parsedCijena, parsedUkupno],
+      [kamionId, normalizedDatum, parsedLitara, parsedCijena, parsedUkupno],
     )
 
     return NextResponse.json(
