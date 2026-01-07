@@ -29,6 +29,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ success: false, message: "Neautorizovan pristup" }, { status: 401 })
     }
 
+    const session = JSON.parse(decodeURIComponent(sessionCookie.value))
+
     const [kamioni] = await pool.execute<KamionRow[]>(
       `SELECT k.*, k.zaduzeni_vozac_id as vozac_id, v.ime as vozac_ime, v.prezime as vozac_prezime 
        FROM kamion k 
@@ -59,7 +61,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ success: false, message: "Neautorizovan pristup" }, { status: 401 })
     }
 
-    const session = JSON.parse(sessionCookie.value)
+    const session = JSON.parse(decodeURIComponent(sessionCookie.value))
 
     if (session.role !== "admin") {
       return NextResponse.json({ success: false, message: "Nemate dozvolu za ovu akciju" }, { status: 403 })
@@ -118,7 +120,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return NextResponse.json({ success: false, message: "Neautorizovan pristup" }, { status: 401 })
     }
 
-    const session = JSON.parse(sessionCookie.value)
+    const session = JSON.parse(decodeURIComponent(sessionCookie.value))
 
     if (session.role !== "admin") {
       return NextResponse.json({ success: false, message: "Nemate dozvolu za ovu akciju" }, { status: 403 })

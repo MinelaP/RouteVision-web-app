@@ -1,7 +1,7 @@
 // app/api/vozni-park/route.ts
 import { type NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
-import { getSessionUser } from "@/lib/auth"
+import { cookies } from "next/headers"
 import type { RowDataPacket, ResultSetHeader } from "mysql2"
 
 interface KamionRow extends RowDataPacket {
@@ -20,24 +20,29 @@ export async function GET(request: NextRequest) {
   const debugMode = request.nextUrl.searchParams.get("debug") === "1"
 
   try {
-    const user = await getSessionUser(request)
-    if (!user) {
+    const cookieStore = await cookies()
+    const sessionCookie = cookieStore.get("session")
+
+    if (!sessionCookie) {
       return NextResponse.json({ success: false, message: "Neautorizovan pristup" }, { status: 401 })
     }
 
+    const session = JSON.parse(decodeURIComponent(sessionCookie.value))
+    const userId = session.userId ?? session.id
+
     // Admin: return all active kamioni
-    if (user.role === "admin") {
+    if (session.role === "admin") {
       const [rows] = await pool.execute<KamionRow[]>(
-          `SELECT k.*, k.zaduzeni_vozac_id as zaduzeni_vozac_id, v.ime as vozac_ime, v.prezime as vozac_prezime
+          `SELECT k.*, k.zaduzeni_vozac_id as vozac_id, v.ime as vozac_ime, v.prezime as vozac_prezime
          FROM kamion k
-         LEFT JOIN vozac v ON k.zaduzeni_vozac_id = v.id OR k.vozac_id = v.id
+         LEFT JOIN vozac v ON k.zaduzeni_vozac_id = v.id
          WHERE k.aktivan = TRUE
          ORDER BY k.datum_kreiranja DESC`,
       )
       return NextResponse.json({ success: true, data: rows })
     }
 
-    if (user.role !== "vozac") {
+    if (session.role !== "vozac") {
       return NextResponse.json({ success: false, message: "Nemate dozvolu za ovu akciju" }, { status: 403 })
     }
 
@@ -46,11 +51,11 @@ export async function GET(request: NextRequest) {
     // 1) Primary (YOUR working query): vozac -> kamion via v.kamion_id
     try {
       const [rows] = await pool.execute<KamionRow[]>(
-          `SELECT k.* 
+          `SELECT k.*, k.zaduzeni_vozac_id as vozac_id 
          FROM vozac v
          LEFT JOIN kamion k ON v.kamion_id = k.id
          WHERE v.id = ? AND k.aktivan = TRUE`,
-          [user.id],
+          [userId],
       )
       debug.push({ step: "join vozac.v.kamion_id -> kamion", count: Array.isArray(rows) ? rows.length : 0 })
       if (Array.isArray(rows) && rows.length > 0) {
@@ -64,11 +69,11 @@ export async function GET(request: NextRequest) {
     // 2) Common schema: kamion.zaduzeni_vozac_id OR kamion.vozac_id fields
     try {
       const [rows] = await pool.execute<KamionRow[]>(
-          `SELECT k.*, k.zaduzeni_vozac_id as zaduzeni_vozac_id, k.vozac_id as vozac_id
+          `SELECT k.*, k.zaduzeni_vozac_id as vozac_id
          FROM kamion k
-         WHERE k.aktivan = TRUE AND (k.zaduzeni_vozac_id = ? OR k.vozac_id = ?)
+         WHERE k.aktivan = TRUE AND k.zaduzeni_vozac_id = ?
          ORDER BY k.datum_kreiranja DESC`,
-          [user.id, user.id],
+          [userId],
       )
       debug.push({ step: "kamion.zaduzeni_vozac_id OR kamion.vozac_id", count: Array.isArray(rows) ? rows.length : 0 })
       if (Array.isArray(rows) && rows.length > 0) {
@@ -82,12 +87,12 @@ export async function GET(request: NextRequest) {
     // 3) mapping table vozac_kamion (common name)
     try {
       const [rows] = await pool.execute<KamionRow[]>(
-          `SELECT k.* 
+          `SELECT k.*, k.zaduzeni_vozac_id as vozac_id 
          FROM kamion k
          JOIN vozac_kamion vk ON vk.kamion_id = k.id
          WHERE vk.vozac_id = ? AND k.aktivan = TRUE
          ORDER BY k.datum_kreiranja DESC`,
-          [user.id],
+          [userId],
       )
       debug.push({ step: "mapping vozac_kamion", count: Array.isArray(rows) ? rows.length : 0 })
       if (Array.isArray(rows) && rows.length > 0) {
@@ -101,12 +106,12 @@ export async function GET(request: NextRequest) {
     // 4) mapping table kamion_vozac (alternate name)
     try {
       const [rows] = await pool.execute<KamionRow[]>(
-          `SELECT k.* 
+          `SELECT k.*, k.zaduzeni_vozac_id as vozac_id 
          FROM kamion k
          JOIN kamion_vozac kv ON kv.kamion_id = k.id
          WHERE kv.vozac_id = ? AND k.aktivan = TRUE
          ORDER BY k.datum_kreiranja DESC`,
-          [user.id],
+          [userId],
       )
       debug.push({ step: "mapping kamion_vozac", count: Array.isArray(rows) ? rows.length : 0 })
       if (Array.isArray(rows) && rows.length > 0) {
@@ -134,12 +139,16 @@ export async function GET(request: NextRequest) {
 // POST /api/vozni-park - Kreiranje novog kamiona
 export async function POST(request: NextRequest) {
   try {
-    const user = await getSessionUser(request)
-    if (!user) {
+    const cookieStore = await cookies()
+    const sessionCookie = cookieStore.get("session")
+
+    if (!sessionCookie) {
       return NextResponse.json({ success: false, message: "Neautorizovan pristup" }, { status: 401 })
     }
 
-    if (user.role !== "admin") {
+    const session = JSON.parse(decodeURIComponent(sessionCookie.value))
+
+    if (session.role !== "admin") {
       return NextResponse.json({ success: false, message: "Nemate dozvolu za ovu akciju" }, { status: 403 })
     }
 
