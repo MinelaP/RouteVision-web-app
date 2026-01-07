@@ -7,6 +7,7 @@ const poolConfig = {
     port: Number.parseInt(process.env.DB_PORT || "3306"),
     user: process.env.DB_USER || "root",
     database: process.env.DB_NAME || "baza",
+    password: process.env.DB_PASSWORD || "root",
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
