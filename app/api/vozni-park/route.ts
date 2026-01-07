@@ -2,7 +2,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { getSessionUser } from "@/lib/auth"
-import type { RowDataPacket } from "mysql2"
+import type { RowDataPacket, ResultSetHeader } from "mysql2"
 
 interface KamionRow extends RowDataPacket {
   id: number
@@ -127,6 +127,78 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error("[vozni-park] Greška pri dohvatanju kamiona:", error)
+    return NextResponse.json({ success: false, message: "Greška na serveru" }, { status: 500 })
+  }
+}
+
+// POST /api/vozni-park - Kreiranje novog kamiona
+export async function POST(request: NextRequest) {
+  try {
+    const user = await getSessionUser(request)
+    if (!user) {
+      return NextResponse.json({ success: false, message: "Neautorizovan pristup" }, { status: 401 })
+    }
+
+    if (user.role !== "admin") {
+      return NextResponse.json({ success: false, message: "Nemate dozvolu za ovu akciju" }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const {
+      registarska_tablica,
+      marka,
+      model,
+      godina_proizvodnje,
+      kapacitet_tone,
+      vrsta_voza,
+      stanje_kilometra,
+      datum_registracije,
+      datum_zakljucnog_pregleda,
+      vozac_id,
+    } = body
+
+    if (!registarska_tablica || !marka || !model) {
+      return NextResponse.json(
+        { success: false, message: "Registarska tablica, marka i model su obavezni" },
+        { status: 400 },
+      )
+    }
+
+    const [existing] = await pool.execute<KamionRow[]>("SELECT id FROM kamion WHERE registarska_tablica = ?", [
+      registarska_tablica,
+    ])
+
+    if (existing.length > 0) {
+      return NextResponse.json({ success: false, message: "Registarska tablica već postoji" }, { status: 400 })
+    }
+
+    const normalizedVozacId = vozac_id && Number(vozac_id) !== 0 ? Number(vozac_id) : null
+
+    const [result] = await pool.execute<ResultSetHeader>(
+      `INSERT INTO kamion (registarska_tablica, marka, model, godina_proizvodnje, kapacitet_tone, 
+       vrsta_voza, stanje_kilometra, datum_registracije, datum_zakljucnog_pregleda, zaduzeni_vozac_id) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        registarska_tablica,
+        marka,
+        model,
+        godina_proizvodnje || null,
+        kapacitet_tone || null,
+        vrsta_voza || null,
+        stanje_kilometra || 0,
+        datum_registracije || null,
+        datum_zakljucnog_pregleda || null,
+        normalizedVozacId,
+      ],
+    )
+
+    return NextResponse.json({
+      success: true,
+      message: "Kamion uspješno kreiran",
+      id: result.insertId,
+    })
+  } catch (error) {
+    console.error("[vozni-park] Greška pri kreiranju kamiona:", error)
     return NextResponse.json({ success: false, message: "Greška na serveru" }, { status: 500 })
   }
 }
