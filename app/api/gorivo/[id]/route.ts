@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { getSessionUser } from "@/lib/auth"
+import { normalizeDateInput } from "@/lib/date"
 import type { ResultSetHeader } from "mysql2"
 
 // PUT - Ažuriraj gorivo
@@ -17,17 +18,21 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const data = await request.json()
     const { datum, litara, cijena_po_litri, ukupno } = data
+    const normalizedDatum = normalizeDateInput(datum)
     const parsedLitara = Number.parseFloat(litara)
     const parsedCijena = Number.parseFloat(cijena_po_litri)
     const parsedUkupno = Number.parseFloat(ukupno)
 
-    if (Number.isNaN(parsedLitara) || Number.isNaN(parsedCijena) || Number.isNaN(parsedUkupno)) {
-      return NextResponse.json({ success: false, message: "Unesite validne brojčane vrijednosti" }, { status: 400 })
+    if (!normalizedDatum || Number.isNaN(parsedLitara) || Number.isNaN(parsedCijena) || Number.isNaN(parsedUkupno)) {
+      return NextResponse.json(
+        { success: false, message: "Unesite validan datum i brojčane vrijednosti" },
+        { status: 400 },
+      )
     }
 
     const [result] = await pool.execute<ResultSetHeader>(
       `UPDATE gorivo SET datum = ?, litara = ?, cijena_po_litri = ?, ukupno = ? WHERE id = ?`,
-      [datum, parsedLitara, parsedCijena, parsedUkupno, params.id],
+      [normalizedDatum, parsedLitara, parsedCijena, parsedUkupno, params.id],
     )
 
     if (result.affectedRows === 0) {
